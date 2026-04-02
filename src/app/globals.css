@@ -24,3 +24,43 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes bounce-in {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.35s ease-out forwards;
+}
+
+@keyframes bump-up {
+  0%   { transform: translateY(0);     opacity: 1; }
+  30%  { transform: translateY(-40%);  opacity: 0.4; }
+  60%  { transform: translateY(-20%);  opacity: 0.3; }
+  100% { transform: translateY(0);     opacity: 0.35; }
+}
+@keyframes bump-down {
+  0%   { transform: translateY(0);    opacity: 1; }
+  30%  { transform: translateY(40%);  opacity: 0.4; }
+  60%  { transform: translateY(20%);  opacity: 0.3; }
+  100% { transform: translateY(0);    opacity: 0.35; }
+}
+@keyframes bump-left {
+  0%   { transform: translateX(0);     opacity: 1; }
+  30%  { transform: translateX(-40%);  opacity: 0.4; }
+  60%  { transform: translateX(-20%);  opacity: 0.3; }
+  100% { transform: translateX(0);     opacity: 0.35; }
+}
+@keyframes bump-right {
+  0%   { transform: translateX(0);    opacity: 1; }
+  30%  { transform: translateX(40%);  opacity: 0.4; }
+  60%  { transform: translateX(20%);  opacity: 0.3; }
+  100% { transform: translateX(0);    opacity: 0.35; }
+}
+
+.bump-UP    { animation: bump-up    0.4s ease-out forwards; }
+.bump-DOWN  { animation: bump-down  0.4s ease-out forwards; }
+.bump-LEFT  { animation: bump-left  0.4s ease-out forwards; }
+.bump-RIGHT { animation: bump-right 0.4s ease-out forwards; }
