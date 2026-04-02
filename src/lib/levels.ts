@@ -122,19 +122,19 @@ export const LEVELS: Level[] = [
     maxBlocks: 5,
   },
   {
-    // 반복 응용 2: 오른쪽으로 반복한 뒤 세로 통로를 타고 올라가기
+    // 반복 응용 2: 별에서 딱 멈춰야 함정을 피할 수 있음
     id: 10,
-    name: '벽돌 옆 오르막',
+    name: '별 앞에서 멈추기',
     startPosition: { row: 5, col: 0 },
     goalPosition:  { row: 0, col: 5 },
-    starPosition: { row: 1, col: 5 },
+    starPosition: { row: 1, col: 3 },
     walls: [
-      { row: 4, col: 1 }, { row: 3, col: 1 }, { row: 2, col: 1 }, { row: 1, col: 1 },
-      { row: 1, col: 2 }, { row: 1, col: 3 },
+      { row: 4, col: 2 }, { row: 3, col: 2 }, { row: 2, col: 2 },
+      { row: 2, col: 3 }, { row: 2, col: 4 }, { row: 4, col: 4 },
     ],
     traps: [
-      { row: 4, col: 4 }, { row: 3, col: 4 }, { row: 2, col: 4 },
+      { row: 4, col: 1 }, { row: 3, col: 4 }, { row: 1, col: 4 },
     ],
-    maxBlocks: 5,
+    maxBlocks: 7,
   },
 ];
