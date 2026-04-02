@@ -1,8 +1,8 @@
-import type { Direction, GameStatus } from '@/types/game';
+import type { GameStatus, ProgramBlock } from '@/types/game';
 import BlockItem from './BlockItem';
 
 interface BlockSequenceProps {
-  sequence: Direction[];
+  sequence: ProgramBlock[];
   currentStepIndex: number;
   status: GameStatus;
   onRemove: (index: number) => void;
@@ -21,10 +21,10 @@ export default function BlockSequence({ sequence, currentStepIndex, status, onRe
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-1.5 pr-1">
-      {sequence.map((dir, i) => (
+      {sequence.map((block, i) => (
         <BlockItem
           key={i}
-          direction={dir}
+          block={block}
           index={i}
           lineNumber={i + 1}
           isActive={isRunning && i === currentStepIndex}

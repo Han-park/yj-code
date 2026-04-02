@@ -1,4 +1,4 @@
-import type { Position, Direction } from '@/types/game';
+import type { Position, Direction, ProgramBlock } from '@/types/game';
 import { GRID_SIZE } from './levels';
 
 export type MoveResult =
@@ -41,27 +41,55 @@ export function positionsEqual(a: Position, b: Position): boolean {
 
 export function computePath(
   start: Position,
-  sequence: Direction[],
+  sequence: ProgramBlock[],
   walls: Position[],
-  traps: Position[]
-): { path: Position[]; wallAtIndex: number | null; trapAtIndex: number | null } {
+  traps: Position[],
+  starPosition?: Position
+): {
+  path: Position[];
+  lineIndexByStep: number[];
+  wallAtIndex: number | null;
+  trapAtStepIndex: number | null;
+} {
   const path: Position[] = [];
+  const lineIndexByStep: number[] = [];
   let pos = start;
 
   for (let i = 0; i < sequence.length; i++) {
-    const result = applyMove(pos, sequence[i], walls, traps);
+    const block = sequence[i];
+    const repeatUntilStar = block.type === 'repeatUntilStar';
+    const maxRepeatSteps = GRID_SIZE * GRID_SIZE;
+    let repeatCount = 0;
 
-    if (result.kind === 'wall') {
-      return { path, wallAtIndex: i, trapAtIndex: null };
-    }
+    while (true) {
+      const result = applyMove(pos, block.dir, walls, traps);
 
-    path.push(result.position);
-    pos = result.position;
+      if (result.kind === 'wall') {
+        return { path, lineIndexByStep, wallAtIndex: i, trapAtStepIndex: null };
+      }
 
-    if (result.kind === 'trap') {
-      return { path, wallAtIndex: null, trapAtIndex: i };
+      path.push(result.position);
+      lineIndexByStep.push(i);
+      pos = result.position;
+
+      if (result.kind === 'trap') {
+        return { path, lineIndexByStep, wallAtIndex: null, trapAtStepIndex: path.length - 1 };
+      }
+
+      if (!repeatUntilStar) {
+        break;
+      }
+
+      repeatCount += 1;
+      if (starPosition && positionsEqual(result.position, starPosition)) {
+        break;
+      }
+
+      if (repeatCount >= maxRepeatSteps) {
+        return { path, lineIndexByStep, wallAtIndex: i, trapAtStepIndex: null };
+      }
     }
   }
 
-  return { path, wallAtIndex: null, trapAtIndex: null };
+  return { path, lineIndexByStep, wallAtIndex: null, trapAtStepIndex: null };
 }

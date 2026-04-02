@@ -15,7 +15,8 @@ import Confetti from '@/components/Confetti';
 
 type Action =
   | { type: 'SET_LEVEL'; levelIndex: number }
-  | { type: 'ADD_BLOCK'; dir: Direction }
+  | { type: 'ADD_MOVE_BLOCK'; dir: Direction }
+  | { type: 'ADD_REPEAT_BLOCK'; dir: Direction }
   | { type: 'REMOVE_BLOCK'; index: number }
   | { type: 'CLEAR_SEQUENCE' }
   | { type: 'START_RUN' }
@@ -38,8 +39,10 @@ function gameReducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'SET_LEVEL':
       return makeInitialState(action.levelIndex);
-    case 'ADD_BLOCK':
-      return { ...state, sequence: [...state.sequence, action.dir] };
+    case 'ADD_MOVE_BLOCK':
+      return { ...state, sequence: [...state.sequence, { type: 'move', dir: action.dir }] };
+    case 'ADD_REPEAT_BLOCK':
+      return { ...state, sequence: [...state.sequence, { type: 'repeatUntilStar', dir: action.dir }] };
     case 'REMOVE_BLOCK':
       return { ...state, sequence: state.sequence.filter((_, i) => i !== action.index) };
     case 'CLEAR_SEQUENCE':
@@ -70,6 +73,7 @@ export default function Home() {
   const [showWinModal, setShowWinModal] = useState(false);
   const [showBlockedModal, setShowBlockedModal] = useState(false);
   const [showTrappedModal, setShowTrappedModal] = useState(false);
+  const [levelUpMessage, setLevelUpMessage] = useState<string | null>(null);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const level = LEVELS[state.currentLevelIndex];
@@ -108,14 +112,35 @@ export default function Home() {
     }
   }, [state.status]);
 
+  useEffect(() => {
+    const introMessage =
+      level.id === 3
+        ? '레벨 업! 장애물이 생겼어요'
+        : level.id === 4
+        ? '레벨 업! 블럭 개수 제한이 생겼어요'
+        : level.id === 8
+          ? '레벨 업! 반복 블럭이 생겼어요'
+          : null;
+
+    if (!introMessage) {
+      setLevelUpMessage(null);
+      return;
+    }
+
+    setLevelUpMessage(introMessage);
+    const t = setTimeout(() => setLevelUpMessage(null), 2200);
+    return () => clearTimeout(t);
+  }, [level.id]);
+
   function runSequence() {
     if (state.sequence.length === 0) return;
 
-    const { path, wallAtIndex, trapAtIndex } = computePath(
+    const { path, lineIndexByStep, wallAtIndex, trapAtStepIndex } = computePath(
       level.startPosition,
       state.sequence,
       level.walls,
-      level.traps
+      level.traps,
+      level.starPosition
     );
 
     dispatch({ type: 'START_RUN' });
@@ -124,14 +149,15 @@ export default function Home() {
     for (let i = 0; i < path.length; i++) {
       const position = path[i];
       const isGoal = positionsEqual(position, level.goalPosition);
-      const isTrapHit = trapAtIndex === i;
+      const isTrapHit = trapAtStepIndex === i;
+      const activeLineIndex = lineIndexByStep[i] ?? i;
       const t = setTimeout(() => {
-        dispatch({ type: 'STEP_COMPLETE', position, stepIndex: i });
+        dispatch({ type: 'STEP_COMPLETE', position, stepIndex: activeLineIndex });
         if (isGoal) {
           dispatch({ type: 'SET_STATUS', status: 'won' });
         } else if (isTrapHit) {
-          dispatch({ type: 'SET_STATUS', status: 'trapped', failLine: i + 1 });
-        } else if (wallAtIndex === null && trapAtIndex === null && i === path.length - 1) {
+          dispatch({ type: 'SET_STATUS', status: 'trapped', failLine: activeLineIndex + 1 });
+        } else if (wallAtIndex === null && trapAtStepIndex === null && i === path.length - 1) {
           dispatch({ type: 'SET_STATUS', status: 'failed' });
         }
       }, (i + 1) * 1000);
@@ -146,7 +172,7 @@ export default function Home() {
       timersRef.current.push(t);
     }
 
-    if (path.length === 0 && wallAtIndex === null && trapAtIndex === null) {
+    if (path.length === 0 && wallAtIndex === null && trapAtStepIndex === null) {
       dispatch({ type: 'SET_STATUS', status: 'failed' });
     }
   }
@@ -163,11 +189,24 @@ export default function Home() {
 
   const blockedDirection =
     state.status === 'blocked' && state.blockedAtLine != null
-      ? state.sequence[state.blockedAtLine - 1]
+      ? state.sequence[state.blockedAtLine - 1]?.dir
       : null;
+  const activeBlock =
+    state.status === 'running' && state.currentStepIndex >= 0
+      ? state.sequence[state.currentStepIndex]
+      : null;
+  const activeRepeatDirection = activeBlock?.type === 'repeatUntilStar' ? activeBlock.dir : null;
 
   return (
-    <div className="flex flex-col h-screen bg-slate-100">
+    <div className="relative flex flex-col h-screen bg-slate-100">
+      {levelUpMessage && (
+        <div className="pointer-events-none absolute inset-x-0 top-20 z-30 flex justify-center px-4">
+          <div className="rounded-3xl border-4 border-emerald-200 bg-white/95 px-8 py-6 text-center shadow-2xl backdrop-blur-sm animate-bounce-in">
+            <p className="text-sm font-black uppercase tracking-[0.3em] text-emerald-500">Level Up</p>
+            <p className="mt-2 text-3xl font-black text-slate-800">{levelUpMessage}</p>
+          </div>
+        </div>
+      )}
       {/* Level selector */}
       <header className="flex items-center gap-3 px-4 py-2 bg-white border-b border-slate-200 shadow-sm">
         <span className="font-bold text-slate-700 text-sm mr-2">🐴 YJ-Code</span>
@@ -195,6 +234,7 @@ export default function Home() {
             level={level}
             horsePosition={state.horsePosition}
             blockedDirection={blockedDirection}
+            activeRepeatDirection={activeRepeatDirection}
           />
           <Confetti active={state.status === 'won'} />
           <BlockedModal
@@ -226,7 +266,9 @@ export default function Home() {
             status={state.status}
             currentStepIndex={state.currentStepIndex}
             maxBlocks={level.maxBlocks}
-            onAddBlock={(dir) => dispatch({ type: 'ADD_BLOCK', dir })}
+            showRepeatBlocks={Boolean(level.starPosition)}
+            onAddMoveBlock={(dir) => dispatch({ type: 'ADD_MOVE_BLOCK', dir })}
+            onAddRepeatBlock={(dir) => dispatch({ type: 'ADD_REPEAT_BLOCK', dir })}
             onRemoveBlock={(index) => dispatch({ type: 'REMOVE_BLOCK', index })}
             onClearSequence={() => dispatch({ type: 'CLEAR_SEQUENCE' })}
             onPlay={runSequence}
