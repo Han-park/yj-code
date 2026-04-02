@@ -1,7 +1,17 @@
 import type { Position, Direction } from '@/types/game';
 import { GRID_SIZE } from './levels';
 
-export function applyMove(pos: Position, dir: Direction, obstacles: Position[]): Position | null {
+export type MoveResult =
+  | { kind: 'ok'; position: Position }
+  | { kind: 'wall' }
+  | { kind: 'trap'; position: Position };
+
+export function applyMove(
+  pos: Position,
+  dir: Direction,
+  walls: Position[],
+  traps: Position[]
+): MoveResult {
   let row = pos.row;
   let col = pos.col;
 
@@ -10,13 +20,19 @@ export function applyMove(pos: Position, dir: Direction, obstacles: Position[]):
   else if (dir === 'LEFT') col -= 1;
   else if (dir === 'RIGHT') col += 1;
 
-  if (row < 0 || row >= GRID_SIZE || col < 0 || col >= GRID_SIZE) return null;
+  if (row < 0 || row >= GRID_SIZE || col < 0 || col >= GRID_SIZE) return { kind: 'wall' };
 
-  for (const obs of obstacles) {
-    if (obs.row === row && obs.col === col) return null;
+  for (const w of walls) {
+    if (w.row === row && w.col === col) return { kind: 'wall' };
   }
 
-  return { row, col };
+  const position = { row, col };
+
+  for (const t of traps) {
+    if (t.row === row && t.col === col) return { kind: 'trap', position };
+  }
+
+  return { kind: 'ok', position };
 }
 
 export function positionsEqual(a: Position, b: Position): boolean {
@@ -26,19 +42,26 @@ export function positionsEqual(a: Position, b: Position): boolean {
 export function computePath(
   start: Position,
   sequence: Direction[],
-  obstacles: Position[]
-): { path: Position[]; failAtIndex: number | null } {
+  walls: Position[],
+  traps: Position[]
+): { path: Position[]; wallAtIndex: number | null; trapAtIndex: number | null } {
   const path: Position[] = [];
   let pos = start;
 
   for (let i = 0; i < sequence.length; i++) {
-    const next = applyMove(pos, sequence[i], obstacles);
-    if (next === null) {
-      return { path, failAtIndex: i };
+    const result = applyMove(pos, sequence[i], walls, traps);
+
+    if (result.kind === 'wall') {
+      return { path, wallAtIndex: i, trapAtIndex: null };
     }
-    path.push(next);
-    pos = next;
+
+    path.push(result.position);
+    pos = result.position;
+
+    if (result.kind === 'trap') {
+      return { path, wallAtIndex: null, trapAtIndex: i };
+    }
   }
 
-  return { path, failAtIndex: null };
+  return { path, wallAtIndex: null, trapAtIndex: null };
 }

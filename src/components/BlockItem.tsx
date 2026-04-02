@@ -23,10 +23,11 @@ export default function BlockItem({ direction, index, lineNumber, isActive, isDi
   return (
     <div
       className={`flex items-center gap-2 rounded-lg text-white font-bold text-sm shadow transition-all overflow-hidden
-        ${isActive ? 'ring-2 ring-yellow-400 scale-105' : ''}
+        ${isActive ? 'outline outline-3 outline-yellow-400 brightness-125' : ''}
       `}
     >
-      <span className="bg-black/20 self-stretch flex items-center justify-center px-2 min-w-[2rem] text-white/80 font-mono text-xs">
+      <span className={`self-stretch flex items-center justify-center px-2 min-w-[2rem] font-mono text-xs font-bold transition-colors
+        ${isActive ? 'bg-yellow-400 text-slate-900' : 'bg-black/20 text-white/80'}`}>
         {lineNumber}
       </span>
       <span className={`flex items-center gap-2 flex-1 px-3 py-1.5 ${color}`}>

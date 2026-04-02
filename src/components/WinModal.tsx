@@ -13,7 +13,7 @@ export default function WinModal({ show, levelName, hasNextLevel, onNextLevel, o
     <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
       <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4 animate-bounce-in">
         <div className="text-5xl">🎉</div>
-        <h2 className="text-2xl font-bold text-slate-800">레벨 클리어!</h2>
+        <h2 className="text-2xl font-bold text-slate-800">성공</h2>
         <p className="text-slate-500 text-sm">{levelName}</p>
         <div className="flex gap-3 mt-2">
           <button

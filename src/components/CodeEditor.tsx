@@ -7,6 +7,7 @@ interface CodeEditorProps {
   sequence: Direction[];
   status: GameStatus;
   currentStepIndex: number;
+  maxBlocks?: number;
   onAddBlock: (dir: Direction) => void;
   onRemoveBlock: (index: number) => void;
   onClearSequence: () => void;
@@ -18,6 +19,7 @@ export default function CodeEditor({
   sequence,
   status,
   currentStepIndex,
+  maxBlocks,
   onAddBlock,
   onRemoveBlock,
   onClearSequence,
@@ -25,22 +27,28 @@ export default function CodeEditor({
   onReset,
 }: CodeEditorProps) {
   const isRunning = status === 'running';
+  const atLimit = maxBlocks !== undefined && sequence.length >= maxBlocks;
 
   return (
     <div className="flex flex-col h-full gap-4 p-4">
       <div>
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">블럭</p>
-        <BlockPalette disabled={isRunning} onAdd={onAddBlock} />
+        <BlockPalette disabled={isRunning || atLimit} onAdd={onAddBlock} />
       </div>
 
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
           내 프로그램{sequence.length > 0 ? ` (${sequence.length})` : ''}
         </p>
+        {maxBlocks !== undefined && (
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${atLimit ? 'bg-red-100 text-red-600' : 'bg-slate-200 text-slate-600'}`}>
+            {sequence.length} / {maxBlocks}
+          </span>
+        )}
         {sequence.length > 0 && !isRunning && (
           <button
             onClick={onClearSequence}
-            className="text-xs text-slate-400 hover:text-red-400 transition-colors"
+            className="text-sm font-semibold px-3 py-1 rounded-lg bg-slate-200 hover:bg-red-100 text-slate-500 hover:text-red-500 transition-colors"
           >
             전체 지우기
           </button>

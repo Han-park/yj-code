@@ -1,8 +1,8 @@
 export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 
 export interface Position {
-  row: number; // 0–9, 0 = top
-  col: number; // 0–9, 0 = left
+  row: number; // 0–5, 0 = top
+  col: number; // 0–5, 0 = left
 }
 
 export interface Level {
@@ -10,11 +10,12 @@ export interface Level {
   name: string;
   startPosition: Position;
   goalPosition: Position;
-  obstacles: Position[];
-  maxBlocks?: number;
+  walls: Position[];   // movement blocked
+  traps: Position[];   // entering = instant fail
+  maxBlocks?: number;  // undefined = unlimited
 }
 
-export type GameStatus = 'idle' | 'running' | 'won' | 'failed' | 'blocked';
+export type GameStatus = 'idle' | 'running' | 'won' | 'failed' | 'blocked' | 'trapped';
 
 export interface GameState {
   currentLevelIndex: number;

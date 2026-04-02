@@ -1,6 +1,6 @@
 'use client';
 
-import { useReducer, useRef, useEffect } from 'react';
+import { useReducer, useRef, useEffect, useState } from 'react';
 import type { GameState, GameStatus, Direction, Position } from '@/types/game';
 import { LEVELS } from '@/lib/levels';
 import { computePath, positionsEqual } from '@/lib/gameEngine';
@@ -8,6 +8,8 @@ import GameBoard from '@/components/GameBoard';
 import CodeEditor from '@/components/CodeEditor';
 import WinModal from '@/components/WinModal';
 import BlockedModal from '@/components/BlockedModal';
+import TrappedModal from '@/components/TrappedModal';
+import Confetti from '@/components/Confetti';
 
 // ── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -18,7 +20,7 @@ type Action =
   | { type: 'CLEAR_SEQUENCE' }
   | { type: 'START_RUN' }
   | { type: 'STEP_COMPLETE'; position: Position; stepIndex: number }
-  | { type: 'SET_STATUS'; status: GameStatus; blockedAtLine?: number }
+  | { type: 'SET_STATUS'; status: GameStatus; failLine?: number }
   | { type: 'RESET' };
 
 function makeInitialState(levelIndex = 0): GameState {
@@ -39,22 +41,15 @@ function gameReducer(state: GameState, action: Action): GameState {
     case 'ADD_BLOCK':
       return { ...state, sequence: [...state.sequence, action.dir] };
     case 'REMOVE_BLOCK':
-      return {
-        ...state,
-        sequence: state.sequence.filter((_, i) => i !== action.index),
-      };
+      return { ...state, sequence: state.sequence.filter((_, i) => i !== action.index) };
     case 'CLEAR_SEQUENCE':
       return { ...state, sequence: [] };
     case 'START_RUN':
       return { ...state, status: 'running', currentStepIndex: 0 };
     case 'STEP_COMPLETE':
-      return {
-        ...state,
-        horsePosition: action.position,
-        currentStepIndex: action.stepIndex,
-      };
+      return { ...state, horsePosition: action.position, currentStepIndex: action.stepIndex };
     case 'SET_STATUS':
-      return { ...state, status: action.status, currentStepIndex: -1, blockedAtLine: action.blockedAtLine ?? null };
+      return { ...state, status: action.status, currentStepIndex: -1, blockedAtLine: action.failLine ?? null };
     case 'RESET':
       return {
         ...state,
@@ -72,6 +67,9 @@ function gameReducer(state: GameState, action: Action): GameState {
 
 export default function Home() {
   const [state, dispatch] = useReducer(gameReducer, makeInitialState(0));
+  const [showWinModal, setShowWinModal] = useState(false);
+  const [showBlockedModal, setShowBlockedModal] = useState(false);
+  const [showTrappedModal, setShowTrappedModal] = useState(false);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const level = LEVELS[state.currentLevelIndex];
@@ -81,41 +79,74 @@ export default function Home() {
     timersRef.current = [];
   }
 
+  useEffect(() => { return () => clearAllTimers(); }, []);
+
   useEffect(() => {
-    return () => clearAllTimers();
-  }, []);
+    if (state.status === 'won') {
+      const t = setTimeout(() => setShowWinModal(true), 1800);
+      return () => clearTimeout(t);
+    } else {
+      setShowWinModal(false);
+    }
+  }, [state.status]);
+
+  useEffect(() => {
+    if (state.status === 'blocked') {
+      const t = setTimeout(() => setShowBlockedModal(true), 1000);
+      return () => clearTimeout(t);
+    } else {
+      setShowBlockedModal(false);
+    }
+  }, [state.status]);
+
+  useEffect(() => {
+    if (state.status === 'trapped') {
+      const t = setTimeout(() => setShowTrappedModal(true), 1000);
+      return () => clearTimeout(t);
+    } else {
+      setShowTrappedModal(false);
+    }
+  }, [state.status]);
 
   function runSequence() {
     if (state.sequence.length === 0) return;
 
-    const { path, failAtIndex } = computePath(
+    const { path, wallAtIndex, trapAtIndex } = computePath(
       level.startPosition,
       state.sequence,
-      level.obstacles
+      level.walls,
+      level.traps
     );
 
     dispatch({ type: 'START_RUN' });
 
-    path.forEach((position, i) => {
+    let stoppedAt: number | null = null;
+    for (let i = 0; i < path.length; i++) {
+      const position = path[i];
+      const isGoal = positionsEqual(position, level.goalPosition);
+      const isTrapHit = trapAtIndex === i;
       const t = setTimeout(() => {
         dispatch({ type: 'STEP_COMPLETE', position, stepIndex: i });
-
-        if (failAtIndex === null && i === path.length - 1) {
-          const won = positionsEqual(position, level.goalPosition);
-          dispatch({ type: 'SET_STATUS', status: won ? 'won' : 'failed' });
+        if (isGoal) {
+          dispatch({ type: 'SET_STATUS', status: 'won' });
+        } else if (isTrapHit) {
+          dispatch({ type: 'SET_STATUS', status: 'trapped', failLine: i + 1 });
+        } else if (wallAtIndex === null && trapAtIndex === null && i === path.length - 1) {
+          dispatch({ type: 'SET_STATUS', status: 'failed' });
         }
-      }, (i + 1) * 500);
+      }, (i + 1) * 1000);
       timersRef.current.push(t);
-    });
+      if (isGoal || isTrapHit) { stoppedAt = i; break; }
+    }
 
-    if (failAtIndex !== null) {
+    if (stoppedAt === null && wallAtIndex !== null) {
       const t = setTimeout(() => {
-        dispatch({ type: 'SET_STATUS', status: 'blocked', blockedAtLine: failAtIndex + 1 });
-      }, (path.length + 1) * 500);
+        dispatch({ type: 'SET_STATUS', status: 'blocked', failLine: wallAtIndex + 1 });
+      }, (path.length + 1) * 1000);
       timersRef.current.push(t);
     }
 
-    if (path.length === 0 && failAtIndex === null) {
+    if (path.length === 0 && wallAtIndex === null && trapAtIndex === null) {
       dispatch({ type: 'SET_STATUS', status: 'failed' });
     }
   }
@@ -129,6 +160,11 @@ export default function Home() {
     clearAllTimers();
     dispatch({ type: 'SET_LEVEL', levelIndex: i });
   }
+
+  const blockedDirection =
+    state.status === 'blocked' && state.blockedAtLine != null
+      ? state.sequence[state.blockedAtLine - 1]
+      : null;
 
   return (
     <div className="flex flex-col h-screen bg-slate-100">
@@ -158,19 +194,21 @@ export default function Home() {
           <GameBoard
             level={level}
             horsePosition={state.horsePosition}
-            blockedDirection={
-              state.status === 'blocked' && state.blockedAtLine != null
-                ? state.sequence[state.blockedAtLine - 1]
-                : null
-            }
+            blockedDirection={blockedDirection}
           />
+          <Confetti active={state.status === 'won'} />
           <BlockedModal
-            show={state.status === 'blocked'}
+            show={showBlockedModal}
             blockedAtLine={state.blockedAtLine ?? 0}
             onConfirm={handleReset}
           />
+          <TrappedModal
+            show={showTrappedModal}
+            trappedAtLine={state.blockedAtLine ?? 0}
+            onConfirm={handleReset}
+          />
           <WinModal
-            show={state.status === 'won'}
+            show={showWinModal}
             levelName={level.name}
             hasNextLevel={state.currentLevelIndex < LEVELS.length - 1}
             onNextLevel={() => handleSetLevel(state.currentLevelIndex + 1)}
@@ -187,6 +225,7 @@ export default function Home() {
             sequence={state.sequence}
             status={state.status}
             currentStepIndex={state.currentStepIndex}
+            maxBlocks={level.maxBlocks}
             onAddBlock={(dir) => dispatch({ type: 'ADD_BLOCK', dir })}
             onRemoveBlock={(index) => dispatch({ type: 'REMOVE_BLOCK', index })}
             onClearSequence={() => dispatch({ type: 'CLEAR_SEQUENCE' })}

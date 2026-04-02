@@ -22,7 +22,8 @@ export default function GameBoard({ level, horsePosition, blockedDirection }: Ga
         Array.from({ length: GRID_SIZE }, (_, col) => {
           const isHorse = horsePosition.row === row && horsePosition.col === col;
           const isGoal = level.goalPosition.row === row && level.goalPosition.col === col;
-          const isObstacle = level.obstacles.some(o => o.row === row && o.col === col);
+          const isWall = level.walls.some(w => w.row === row && w.col === col);
+          const isTrap = level.traps.some(t => t.row === row && t.col === col);
           return (
             <GridCell
               key={`${row}-${col}`}
@@ -30,7 +31,8 @@ export default function GameBoard({ level, horsePosition, blockedDirection }: Ga
               col={col}
               isHorse={isHorse}
               isGoal={isGoal}
-              isObstacle={isObstacle}
+              isWall={isWall}
+              isTrap={isTrap}
               blockedDirection={isHorse ? blockedDirection : null}
             />
           );
