@@ -137,4 +137,38 @@ export const LEVELS: Level[] = [
     ],
     maxBlocks: 7,
   },
+  {
+    // 반복 응용 3: 별이 맨 윗줄에 있어 가로로 이동해 별의 열에 맞춘 뒤 위로 반복
+    id: 11,
+    name: '열 맞추고 올라가기',
+    startPosition: { row: 5, col: 0 },
+    goalPosition:  { row: 0, col: 5 },
+    starPosition:  { row: 0, col: 2 },
+    walls: [
+      { row: 1, col: 0 }, { row: 1, col: 1 }, { row: 2, col: 1 },
+      { row: 3, col: 3 }, { row: 3, col: 4 },
+    ],
+    traps: [
+      { row: 4, col: 1 },
+      { row: 2, col: 3 }, { row: 2, col: 4 },
+    ],
+    maxBlocks: 6,
+  },
+  {
+    // 반복 응용 4: 별이 오른쪽 끝에 있어 위로 올라간 뒤 오른쪽으로 반복
+    id: 12,
+    name: '옆으로 달리기',
+    startPosition: { row: 5, col: 0 },
+    goalPosition:  { row: 0, col: 5 },
+    starPosition:  { row: 2, col: 5 },
+    walls: [
+      { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 0, col: 3 },
+      { row: 3, col: 2 }, { row: 4, col: 1 },
+    ],
+    traps: [
+      { row: 1, col: 2 }, { row: 1, col: 3 }, { row: 1, col: 4 },
+      { row: 3, col: 1 }, { row: 3, col: 3 }, { row: 4, col: 4 },
+    ],
+    maxBlocks: 6,
+  },
 ];
